@@ -1,25 +1,92 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
-
 
 ## Loading and preprocessing the data
 
+```{r}
+
+#install.packages("RCurl")
+
+#install.packages("RCurl")
+
+library(RCurl)
+
+#### Package Installation Completed. File extraction begins ###
+
+URL <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+download.file(URL, destfile = "./activity.zip")
+unzip(zipfile="activity.zip")
+activitydata <- read.csv("activity.csv")
+summary(activitydata)
+
+```
+## Mean of total number of steps taken per day
+
+```{r}
+#install.packages("ggplot2")
+
+library(ggplot2)
+total.no.steps <- tapply(activitydata$steps, activitydata$date, FUN=sum, na.rm=TRUE)
+hist(total.no.steps, breaks=5, xlab="Steps", main = "Total Steps per Day")
+mx <- round(mean(total.no.steps))
+mx
+abline(v = mx, col = "red", lwd = 5)
+text(mx, 18 , round(mx, 2))
 
 
-## What is mean total number of steps taken per day?
+```
+
+## average daily activity pattern
+
+```{r}
+averagesteps <-aggregate(steps ~ interval ,data=activitydata,FUN=mean)
+maxSteps <- max(averagesteps$steps)
+ggplot(data=averagesteps, aes(x=interval, y=steps)) + geom_line(col="brown") +xlab("5 Minute Interval")+ylab("Average Number of Steps")+ggtitle("Average Number of Steps per 5 minute Interval") + geom_vline(xintercept = averagesteps[averagesteps$steps==maxSteps,1],col="red") + geom_text(aes(x=averagesteps[averagesteps$steps==maxSteps,1]-25, label=averagesteps[averagesteps$steps==maxSteps,1], y=20), colour="red", angle=90, text=element_text(size=9))
+
+```
+
+## Imputing Null values 
+
+```{r}
+
+activity.na.count <- sum(is.na(activitydata$steps))
+
+activity.na.count
+
+activity.na<-activitydata
+
+nas <- is.na(activity.na$steps)
+
+avg_interval <- tapply(activity.na$steps,activity.na$interval, mean, na.rm=TRUE, simplify = TRUE)
+
+activity.na$steps[nas] <- avg_interval[as.character(activity.na$interval[nas])]
+
+totalstepsperday.nas <- aggregate(steps ~ date, data = activity.na, FUN = sum, na.rm = TRUE)
 
 
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
+hist(totalstepsperday.nas$steps,main = "Total Steps per Day (Without-NA)", xlab = "Number of Steps per Day",
+    ylab = "Interval",
+    col="blue",
+    breaks=50)
 
 
+summary(totalstepsperday.nas)
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
+## WeekDay vs Weekend 
+
+```{r}
+
+## Create WeekDay & WeekendDay identifier
+library(plyr)
+library(dplyr)
+library(lattice)
+
+
+activity.na$day <- weekdays(as.Date(activity.na$date))
+activity.na$DayIdentifier <- ifelse(activity.na$day %in% c("Saturday", "Sunday"), "Weekend", "Weekday")
+weekdayplot <- ddply(activity.na, .(interval, DayIdentifier), summarize, Avg = mean(steps))
+xyplot(Avg~interval|DayIdentifier, data=weekdayplot,type="l",layout = c(1,2),
+       main="Average Steps per Interval Based on Type of Day", 
+       ylab="Average Number of Steps", xlab="Interval")
+
+
+```
